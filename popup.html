@@ -106,6 +106,19 @@
     }
     select:focus { outline: 1px solid #22c55e; }
     select:disabled { opacity: 0.5; }
+    label .val {
+      float: right;
+      color: #f4f4f5;
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    input[type="range"] {
+      width: 100%;
+      margin-bottom: 12px;
+      accent-color: #22c55e;
+      cursor: pointer;
+    }
     .hidden { display: none; }
     footer {
       margin-top: 4px;
@@ -149,14 +162,19 @@
     <select id="stLangSel"></select>
   </div>
 
-  <label for="rateSel">Hız</label>
-  <select id="rateSel">
-    <option value="0.75">0.75×</option>
-    <option value="1">1×</option>
-    <option value="1.25">1.25×</option>
-    <option value="1.5">1.5×</option>
-    <option value="2">2×</option>
+  <label for="rateSel">Hız <span class="val" id="rateVal">1.00×</span></label>
+  <input type="range" id="rateSel" min="0.5" max="2" step="0.05" value="1" />
+
+  <label for="syncSel">Gecikme senkronu</label>
+  <select id="syncSel">
+    <option value="off">Kapalı</option>
+    <option value="catchup">Okumayı hızlandır</option>
+    <option value="video">Videoyu yavaşlat</option>
+    <option value="both">İkisi birden</option>
   </select>
+
+  <label for="offsetSel">Senkron kaydırması <span class="val" id="offsetVal">0.0 sn</span></label>
+  <input type="range" id="offsetSel" min="-2" max="2" step="0.1" value="0" />
 
   <footer>amaranus tarafından yaratıldı</footer>
 

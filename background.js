@@ -10,6 +10,11 @@ let pending = null;
 let sendQueue = [];
 let processing = false;
 let generation = 0;
+let sourceTabId = null;
+
+function noteSender(sender) {
+  if (sender && sender.tab && sender.tab.id != null) sourceTabId = sender.tab.id;
+}
 
 function ensureConnected() {
   if (ws && ws.readyState === WebSocket.OPEN && handshake) {
@@ -112,6 +117,8 @@ function onBinary(data) {
           type: "PLAY_WAV",
           buffer: toBase64(data),
           rate: p.rate,
+          syncMode: p.syncMode,
+          td: p.td,
           meta,
         })
       )
@@ -151,6 +158,8 @@ function pump() {
         pending = {
           resolve,
           rate: item.rate,
+          syncMode: item.syncMode,
+          td: item.td,
           gen,
           timer: setTimeout(() => {
             pending = null;
@@ -189,13 +198,16 @@ async function ensureOffscreen() {
   }
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "ST_SPEAK") {
+    noteSender(sender);
     sendQueue.push({
       text: msg.text,
       voice: msg.voice,
       lang: msg.lang,
       rate: msg.rate,
+      syncMode: msg.syncMode,
+      td: msg.td || Date.now(),
       gen: generation,
     });
     pump();
@@ -203,7 +215,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return false;
   }
 
+  if (msg.type === "ST_REGISTER") {
+    noteSender(sender);
+    sendResponse({ ok: true });
+    return false;
+  }
+
   if (msg.type === "ST_STOP") {
+    noteSender(sender);
     generation++;
     sendQueue = [];
     pendingMeta = null;
@@ -213,7 +232,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg.type === "ST_CONTROL") {
+    noteSender(sender);
     chrome.runtime.sendMessage({ target: "offscreen", type: msg.action }).catch(() => {});
+    sendResponse({ ok: true });
+    return false;
+  }
+
+  if (msg.type === "ST_LAG") {
+    if (sourceTabId != null) {
+      chrome.tabs
+        .sendMessage(sourceTabId, {
+          type: "ST_LAG",
+          lag: msg.lag || 0,
+          queued: msg.queued || 0,
+        })
+        .catch(() => {});
+    }
     sendResponse({ ok: true });
     return false;
   }

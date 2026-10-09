@@ -4,6 +4,10 @@ const voiceSel = document.getElementById("voiceSel");
 const stVoiceSel = document.getElementById("stVoiceSel");
 const stLangSel = document.getElementById("stLangSel");
 const rateSel = document.getElementById("rateSel");
+const rateVal = document.getElementById("rateVal");
+const syncSel = document.getElementById("syncSel");
+const offsetSel = document.getElementById("offsetSel");
+const offsetVal = document.getElementById("offsetVal");
 const browserSection = document.getElementById("browserSection");
 const stSection = document.getElementById("stSection");
 const modeRadios = document.querySelectorAll('input[name="mode"]');
@@ -57,6 +61,33 @@ function currentMode() {
 function setStatus(text, cls) {
   statusEl.textContent = text;
   statusEl.className = "status" + (cls ? " " + cls : "");
+}
+
+function fmtRate(v) {
+  return `${(parseFloat(v) || 1).toFixed(2)}×`;
+}
+
+function fmtOffset(v) {
+  const n = parseFloat(v) || 0;
+  return `${n > 0 ? "+" : ""}${n.toFixed(1)} sn`;
+}
+
+function renderLabels() {
+  rateVal.textContent = fmtRate(rateSel.value);
+  offsetVal.textContent = fmtOffset(offsetSel.value);
+}
+
+function configValues() {
+  return {
+    rate: parseFloat(rateSel.value) || 1,
+    syncMode: syncSel.value || "off",
+    offset: parseFloat(offsetSel.value) || 0,
+  };
+}
+
+async function pushConfigIfRunning() {
+  if (!running || !tabOk) return;
+  await send({ type: "SET_CONFIG", ...configValues() });
 }
 
 function render() {
@@ -181,10 +212,21 @@ async function refreshStatus() {
 }
 
 async function init() {
-  const saved = await chrome.storage.local.get(["mode", "voiceURI", "rate", "stVoice", "stLang"]);
+  const saved = await chrome.storage.local.get([
+    "mode",
+    "voiceURI",
+    "rate",
+    "stVoice",
+    "stLang",
+    "syncMode",
+    "offset",
+  ]);
   mode = saved.mode === "supertonic" ? "supertonic" : "browser";
   document.getElementById(mode === "supertonic" ? "modeSt" : "modeBrowser").checked = true;
   if (saved.rate) rateSel.value = String(saved.rate);
+  if (saved.syncMode) syncSel.value = saved.syncMode;
+  if (typeof saved.offset === "number") offsetSel.value = String(saved.offset);
+  renderLabels();
   fillVoices(saved.voiceURI);
   fillStVoices(null, saved.stVoice);
   fillStLangs(null, saved.stLang);
@@ -213,20 +255,20 @@ modeRadios.forEach((radio) => {
 
 toggleBtn.addEventListener("click", async () => {
   if (tabId == null) return;
-  const rate = parseFloat(rateSel.value) || 1;
 
   let payload;
+  const cfg = configValues();
   if (running) {
     payload = { type: "STOP" };
   } else if (mode === "supertonic") {
     const stVoice = stVoiceSel.value || "M1";
     const stLang = stLangSel.value || null;
-    await chrome.storage.local.set({ stVoice, stLang, rate });
-    payload = { type: "START", mode: "supertonic", stVoice, stLang, rate };
+    await chrome.storage.local.set({ stVoice, stLang, ...cfg });
+    payload = { type: "START", mode: "supertonic", stVoice, stLang, ...cfg };
   } else {
     const voiceURI = voiceSel.value || null;
-    await chrome.storage.local.set({ voiceURI, rate });
-    payload = { type: "START", mode: "browser", voiceURI, rate };
+    await chrome.storage.local.set({ voiceURI, ...cfg });
+    payload = { type: "START", mode: "browser", voiceURI, ...cfg };
   }
 
   const res = await send(payload);
@@ -257,8 +299,25 @@ stLangSel.addEventListener("change", async () => {
   await chrome.storage.local.set({ stLang: stLangSel.value || null });
 });
 
+rateSel.addEventListener("input", () => {
+  renderLabels();
+  pushConfigIfRunning();
+});
 rateSel.addEventListener("change", async () => {
-  await chrome.storage.local.set({ rate: parseFloat(rateSel.value) || 1 });
+  await chrome.storage.local.set({ rate: configValues().rate });
+});
+
+offsetSel.addEventListener("input", () => {
+  renderLabels();
+  pushConfigIfRunning();
+});
+offsetSel.addEventListener("change", async () => {
+  await chrome.storage.local.set({ offset: configValues().offset });
+});
+
+syncSel.addEventListener("change", async () => {
+  await chrome.storage.local.set({ syncMode: configValues().syncMode });
+  pushConfigIfRunning();
 });
 
 speechSynthesis.onvoiceschanged = () => fillVoices(voiceSel.value);

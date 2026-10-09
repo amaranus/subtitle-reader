@@ -4,12 +4,19 @@
   "version": "1.1.0",
   "description": "YouTube videolarindaki altyazilari tarayici TTS veya yerel Supertonic sunucusu ile seslendirir.",
   "permissions": ["storage", "offscreen"],
+  "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Subtitle Reader"
+    "default_title": "Subtitle Reader",
+    "default_icon": "icon.png"
   },
   "content_scripts": [
     {

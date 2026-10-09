@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <title>Subtitle Reader</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 280px;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #18181b;
+      color: #f4f4f5;
+      padding: 14px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    h1 { font-size: 15px; font-weight: 600; }
+    .badge {
+      font-size: 10px;
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      border-radius: 999px;
+      padding: 2px 8px;
+      color: #a1a1aa;
+    }
+    .status {
+      font-size: 12px;
+      color: #a1a1aa;
+      background: #27272a;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+    }
+    .status.active { color: #4ade80; }
+    .status.error { color: #f87171; }
+    .toggle {
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #22c55e;
+      color: #052e16;
+      margin-bottom: 12px;
+      transition: background 0.15s;
+    }
+    .toggle:hover { background: #16a34a; }
+    .toggle.stop { background: #ef4444; color: #450a0a; }
+    .toggle.stop:hover { background: #dc2626; }
+    label {
+      display: block;
+      font-size: 11px;
+      color: #a1a1aa;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    select {
+      width: 100%;
+      padding: 7px 8px;
+      font-size: 12px;
+      background: #27272a;
+      color: #f4f4f5;
+      border: 1px solid #3f3f46;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    select:focus { outline: 1px solid #22c55e; }
+    footer {
+      margin-top: 4px;
+      padding-top: 10px;
+      border-top: 1px solid #27272a;
+      text-align: center;
+      font-size: 11px;
+      color: #71717a;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Subtitle Reader</h1>
+    <span class="badge">YouTube</span>
+  </header>
+
+  <div class="status" id="status">Kontrol ediliyor…</div>
+
+  <button class="toggle" id="toggleBtn">Başlat</button>
+
+  <label for="voiceSel">Ses</label>
+  <select id="voiceSel">
+    <option value="">Varsayılan ses</option>
+  </select>
+
+  <label for="rateSel">Hız</label>
+  <select id="rateSel">
+    <option value="0.75">0.75×</option>
+    <option value="1">1×</option>
+    <option value="1.25">1.25×</option>
+    <option value="1.5">1.5×</option>
+    <option value="2">2×</option>
+  </select>
+
+  <footer>amaranus tarafından yaratıldı</footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

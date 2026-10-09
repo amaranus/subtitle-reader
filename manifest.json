@@ -1,9 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Subtitle Reader",
-  "version": "1.0.0",
-  "description": "YouTube videolarindaki altyazilari tarayicinin TTS motoru ile seslendirir.",
-  "permissions": ["storage"],
+  "version": "1.1.0",
+  "description": "YouTube videolarindaki altyazilari tarayici TTS veya yerel Supertonic sunucusu ile seslendirir.",
+  "permissions": ["storage", "offscreen"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Subtitle Reader"

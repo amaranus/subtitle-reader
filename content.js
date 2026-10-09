@@ -1,6 +1,8 @@
 (() => {
-  const STABLE_MS = 700;
-  const SENT_MS = 300;
+  const STABLE_MS = 550;
+  const SHORT_MS = 800;
+  const SENT_MS = 100;
+  const SENT_RE = /[.,!?…]["'”’)\]]?$/;
   const MAX_PENDING = 320;
 
   const state = {
@@ -181,8 +183,9 @@
       flushCue();
       return;
     }
-    const sentenceDone = /[.!?…]["'”’)\]]?$/.test(state.pendingText);
-    scheduleFlush(sentenceDone ? SENT_MS : STABLE_MS);
+    const sentenceDone = SENT_RE.test(state.pendingText);
+    const wcount = state.pendingText.split(/\s+/).length;
+    scheduleFlush(sentenceDone ? SENT_MS : wcount < 3 ? SHORT_MS : STABLE_MS);
   }
 
   function resetStream() {
@@ -195,7 +198,7 @@
   function scheduleFlush(base) {
     clearTimeout(state.timer);
     const neg = Math.min(0, state.offset || 0) * 1000;
-    const floor = base >= STABLE_MS ? 400 : 150;
+    const floor = base >= STABLE_MS ? 500 : 50;
     const delay = Math.max(floor, base + neg);
     state.timer = setTimeout(() => flushCue(), delay);
   }

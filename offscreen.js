@@ -9,6 +9,59 @@ let catchSticky = 0;
 let reportTimer = null;
 let lastReport = 0;
 
+function findTag(bytes, tag, from) {
+  const a = tag.charCodeAt(0),
+    b = tag.charCodeAt(1),
+    c = tag.charCodeAt(2),
+    d = tag.charCodeAt(3);
+  for (let i = from || 0; i + 3 < bytes.length; i++) {
+    if (bytes[i] === a && bytes[i + 1] === b && bytes[i + 2] === c && bytes[i + 3] === d) return i;
+  }
+  return -1;
+}
+
+function trimWavTail(bytes) {
+  try {
+    const f = findTag(bytes, "fmt ");
+    const d = findTag(bytes, "data");
+    if (f < 0 || d < 0 || d + 8 + 64 > bytes.length) return bytes;
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const channels = dv.getUint16(f + 10, true);
+    const sampleRate = dv.getUint32(f + 12, true);
+    const bits = dv.getUint16(f + 22, true);
+    if (bits !== 16 || channels < 1 || sampleRate < 8000) return bytes;
+    const frame = channels * 2;
+    const dStart = d + 8;
+    const total = Math.floor((bytes.length - dStart) / frame);
+    if (total < 1000) return bytes;
+    const thr = 500;
+    let last = -1;
+    for (let i = total - 1; i >= 0; i--) {
+      const off = dStart + i * frame;
+      let mx = 0;
+      for (let ch = 0; ch < channels; ch++) {
+        const v = Math.abs(dv.getInt16(off + ch * 2, true));
+        if (v > mx) mx = v;
+      }
+      if (mx > thr) {
+        last = i;
+        break;
+      }
+    }
+    if (last < 0) return bytes;
+    const keep = Math.min(total, last + Math.round(sampleRate * 0.06));
+    const newLen = dStart + keep * frame;
+    if (newLen >= bytes.length - 16) return bytes;
+    const out = bytes.slice(0, newLen);
+    const odv = new DataView(out.buffer);
+    odv.setUint32(4, newLen - 8, true);
+    odv.setUint32(d + 4, keep * frame, true);
+    return out;
+  } catch {
+    return bytes;
+  }
+}
+
 function lagInfo() {
   const now = Date.now();
   let lag = 0;
@@ -25,11 +78,22 @@ function isCatchup(item) {
   return !!item && (item.syncMode === "catchup" || item.syncMode === "both");
 }
 
-function effectiveRate(item) {
+function autoFactor(lag) {
+  if (lag <= 1) return 1;
+  return Math.min(1.2, 1 + (lag - 1) * 0.05);
+}
+
+function effectiveRate(item, info) {
   const base = (item && item.rate) || 1;
-  if (!isCatchup(item)) return base;
-  const factor = [1, 1.25, 1.5][catchSticky] || 1;
-  return Math.min(4, base * factor);
+  if (isCatchup(item)) {
+    const factor = [1, 1.25, 1.5][catchSticky] || 1;
+    return Math.min(4, base * factor);
+  }
+  if (item && item.syncMode === "video") {
+    const lag = info ? info.lag : lagInfo().lag;
+    return Math.min(4, base * autoFactor(lag));
+  }
+  return base;
 }
 
 function refreshCatchup(info) {
@@ -37,8 +101,8 @@ function refreshCatchup(info) {
   if (raw === 0) catchSticky = 0;
   else if (raw > catchSticky) catchSticky = raw;
 
-  if (current && currentItem && isCatchup(currentItem)) {
-    const r = effectiveRate(currentItem);
+  if (current && currentItem && (isCatchup(currentItem) || currentItem.syncMode === "video")) {
+    const r = effectiveRate(currentItem, info);
     if (Math.abs((current.playbackRate || 0) - r) > 0.01) {
       current.playbackRate = r;
     }
@@ -97,7 +161,7 @@ function playNext() {
 
   const url = URL.createObjectURL(new Blob([item.bytes], { type: "audio/wav" }));
   const audio = new Audio(url);
-  audio.playbackRate = effectiveRate(item);
+  audio.playbackRate = effectiveRate(item, lagInfo());
   audio.preservesPitch = true;
 
   const done = () => {
@@ -128,7 +192,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.target !== "offscreen") return false;
 
   if (msg.type === "PLAY_WAV") {
-    const bytes = Uint8Array.from(atob(msg.buffer), (c) => c.charCodeAt(0));
+    const bytes = trimWavTail(Uint8Array.from(atob(msg.buffer), (c) => c.charCodeAt(0)));
     queue.push({
       bytes,
       rate: msg.rate,
